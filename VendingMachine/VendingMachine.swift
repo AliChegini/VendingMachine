@@ -7,8 +7,9 @@
 //
 
 import Foundation
+import UIKit
 
-enum VendingSelection {
+enum VendingSelection: String {
     case soda
     case dietSoda
     case chips
@@ -21,6 +22,13 @@ enum VendingSelection {
     case fruitJuice
     case sportsDrink
     case gum
+    
+    func icon() -> UIImage {
+        guard let image = UIImage(named: self.rawValue) else {
+            return #imageLiteral(resourceName: "default")
+        }
+        return image
+    }
 }
 
 protocol VendingItem {
@@ -42,6 +50,50 @@ struct Item: VendingItem {
     var price: Double
     var quantity: Int
 }
+
+
+enum InventoryError: Error {
+    case invalidResource
+    case conversionError
+    case invalidSelection
+}
+
+
+class PlistConverter {
+    static func dictionary(fromFile name: String, ofType type: String) throws -> [String: AnyObject] {
+        guard let path = Bundle.main.path(forResource: name, ofType: type) else {
+            throw InventoryError.invalidResource
+        }
+        
+        guard let dictionary = NSDictionary(contentsOfFile: path) as? [String: AnyObject] else {
+            throw InventoryError.conversionError
+        }
+        
+        return dictionary
+    }
+}
+
+class InventoryUnarchiver {
+    static func vendingInventory(fromDictionary dictionary: [String: AnyObject ]) throws -> [VendingSelection: VendingItem] {
+        var inventory: [VendingSelection: VendingItem] = [:]
+        
+        for (key, value) in dictionary {
+            if let itemDictionary = value as? [String: Any], let price = itemDictionary["price"] as? Double, let quantity = itemDictionary["quantity"] as? Int {
+                let item = Item(price: price, quantity: quantity)
+            
+                guard let selection = VendingSelection(rawValue: key) else {
+                    throw InventoryError.invalidSelection
+                }
+            
+                inventory.updateValue(item, forKey: selection)
+                
+            }
+        }
+            
+        return inventory
+    }
+}
+
 
 class FoodVendingMachine: VendingMachine {
     let selection: [VendingSelection] = [.soda, .dietSoda, .chips, .cookie, .wrap, .sandwich, .candyBar, .popTart, .water, .fruitJuice, .sportsDrink, .gum]
