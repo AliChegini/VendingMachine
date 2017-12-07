@@ -20,6 +20,8 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
     @IBOutlet weak var priceLabel: UILabel!
     
     let vendingMachine: VendingMachine
+    var currentSelection: VendingSelection?
+    var quantity = 1
     
     required init?(coder aDecoder: NSCoder) {
         do {
@@ -37,6 +39,10 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         setupCollectionViewCells()
+        
+        balanceLabel.text = "$\(vendingMachine.amountDeposited)"
+        totalLabel.text = "$00.00"
+        priceLabel.text = "$0.00"
     }
 
     override func didReceiveMemoryWarning() {
@@ -61,7 +67,36 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         collectionView.collectionViewLayout = layout
     }
     
-    // MARK: UICollectionViewDataSource
+    // MARK: - Vending Machine
+    
+    
+    @IBAction func purchase() {
+        if let currentSelection = currentSelection {
+            do {
+                try vendingMachine.vend(selection: currentSelection, quantity: quantity)
+                updateDisplay()
+            } catch {
+                // FIXME: Error handling
+                
+            }
+            
+            if let indexPath = collectionView.indexPathsForSelectedItems?.first {
+                collectionView.deselectItem(at: indexPath, animated: true)
+                updateCell(having: indexPath, selected: false)
+            }
+            
+        } else {
+            // FIXME: Alert user to no selection
+        }
+    }
+    
+    func updateDisplay() {
+        balanceLabel.text = "$\(vendingMachine.amountDeposited)"
+        totalLabel.text = "$00.00"
+        priceLabel.text = "$0.00"
+    }
+    
+    // MARK: - UICollectionViewDataSource
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return vendingMachine.selection.count
@@ -80,6 +115,12 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         updateCell(having: indexPath, selected: true)
+        
+        currentSelection = vendingMachine.selection[indexPath.row]
+        if let currentSelection = currentSelection, let item = vendingMachine.item(forSelection: currentSelection) {
+            priceLabel.text = "$\(item.price)"
+            totalLabel.text = "$\(item.price * Double(quantity))"
+        }
     }
     
     func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
